@@ -44,12 +44,12 @@
       </div>
     </div>
 
-    <div v-else>No sentences found.</div>
+    <div v-else></div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue-demi";
+import { ref, watch } from "vue-demi";
 import { toHiragana } from "~/utils/ja";
 
 const BATCH_SIZE = 10;
@@ -74,7 +74,13 @@ function filterExamples() {
 
         if (i % 2) {
           s = toHiragana(s);
-          const re = new RegExp(`^${s.replace(/\p{sc=Hiragana}/g, "$&?")}$`);
+          const re = new RegExp(
+            `${s.replace(/\p{sc=Hiragana}+/gu, (t) => {
+              return `(${Array.from(t)
+                .map((_, i) => t.substring(0, i + 1))
+                .join("|")})?`;
+            })}`,
+          );
           const exExact: ImmersionKitExample[] = [];
           const exRe: ImmersionKitExample[] = [];
 
@@ -84,12 +90,13 @@ function filterExamples() {
               if (t.includes(s)) {
                 return exExact.push(ex);
               }
-              if (re.test(s)) {
+              if (re.test(t)) {
                 return exRe.push(ex);
               }
             }
             remaining.push(ex);
           });
+          console.log(re, examples.value.length, exRe.length);
           examples.value = [...exExact, ...exRe];
         } else {
           examples.value = examples.value.filter((ex) => {
@@ -155,73 +162,71 @@ interface ImmersionKitExample {
 }
 
 const route = useRoute();
-if (typeof route.query.q === "string") {
-  const r = await useFetch<{
-    data: {
-      examples: ImmersionKitExample[];
-    }[];
-  }>(
-    `https://api.immersionkit.com/look_up_dictionary?keyword=${route.query.q}`,
-  ).then((r) => r.data.value);
+watch(() => route.query.q, doSearch);
+doSearch();
 
-  endIndex.value = BATCH_SIZE;
-  q.value = route.query.q;
+async function doSearch() {
+  if (typeof route.query.q === "string") {
+    examples.value = [];
 
-  immersionKitData.value = r ? r.data[0].examples : [];
+    const r = await useFetch<{
+      data: {
+        examples: ImmersionKitExample[];
+      }[];
+    }>(
+      `https://api.immersionkit.com/look_up_dictionary?keyword=${route.query.q}`,
+    ).then((r) => r.data.value);
 
-  examples.value = immersionKitData.value;
-  const exampleLenBeforeFilter = examples.value.length;
+    endIndex.value = BATCH_SIZE;
+    q.value = route.query.q;
 
-  // examples.map((ex) => {
-  //   setCategory.add(ex.category);
-  //   setDeckName.add(ex.deck_name);
-  //   ex.tags.map((t) => setTags.add(t));
-  // });
-  // console.log(examples[0], setCategory, setDeckName, setTags);
+    immersionKitData.value = r ? r.data[0].examples : [];
+    examples.value = immersionKitData.value;
 
-  // Filter out excluded titles
-  if (state.filterOut.length) {
-    examples.value = examples.value.filter((s) => {
-      for (const f of state.filterOut) {
-        if (typeof f !== "string") {
-          if (f.test(s.deck_name)) return false;
-        } else {
-          if (s.deck_name.toLocaleLowerCase().includes(f.toLocaleLowerCase()))
-            return false;
+    // Filter out excluded titles
+    if (state.filterOut.length) {
+      examples.value = examples.value.filter((s) => {
+        for (const f of state.filterOut) {
+          if (typeof f !== "string") {
+            if (f.test(s.deck_name)) return false;
+          } else {
+            if (s.deck_name.toLocaleLowerCase().includes(f.toLocaleLowerCase()))
+              return false;
+          }
         }
-      }
-      return true;
-    });
-  }
+        return true;
+      });
+    }
 
-  // Filter selected titles first
-  if (state.filterFirst.length) {
-    const fn = (s: ImmersionKitExample) => {
-      let i = 0;
-      for (const f of state.filterFirst) {
-        if (typeof f !== "string") {
-          if (f.test(s.deck_name)) break;
-        } else {
-          if (s.deck_name.toLocaleLowerCase().includes(f.toLocaleLowerCase()))
-            break;
+    // Filter selected titles first
+    if (state.filterFirst.length) {
+      const fn = (s: ImmersionKitExample) => {
+        let i = 0;
+        for (const f of state.filterFirst) {
+          if (typeof f !== "string") {
+            if (f.test(s.deck_name)) break;
+          } else {
+            if (s.deck_name.toLocaleLowerCase().includes(f.toLocaleLowerCase()))
+              break;
+          }
+          i++;
         }
-        i++;
-      }
 
-      return i;
-    };
-    examples.value = examples.value.sort((a, b) => fn(a) - fn(b));
+        return i;
+      };
+      examples.value = examples.value.sort((a, b) => fn(a) - fn(b));
+    }
+
+    const remaining = filterExamples();
+    examples.value = [...examples.value, ...remaining];
   }
-
-  const remaining = filterExamples();
-  examples.value = [...examples.value, ...remaining];
 }
 </script>
 
 <style scoped>
 #anime-sentences-parent {
   display: grid;
-  grid-template-rows: 1fr auto;
+  grid-template-rows: auto 1fr;
   height: calc(100vh - 50px);
   font-family: sans-serif;
 }
