@@ -96,7 +96,6 @@ function filterExamples() {
             }
             remaining.push(ex);
           });
-          console.log(re, examples.value.length, exRe.length);
           examples.value = [...exExact, ...exRe];
         } else {
           examples.value = examples.value.filter((ex) => {
@@ -239,7 +238,6 @@ async function doSearch() {
   display: flex;
   align-items: center;
   margin-bottom: 1em;
-  cursor: pointer;
   min-height: 100px;
 
   -ms-overflow-style: none; /* IE and Edge */
