@@ -44,7 +44,9 @@
       </div>
     </div>
 
-    <div v-else></div>
+    <div v-else style="padding-top: 1em">
+      {{ currentQuery ? "No sentences found." : "" }}
+    </div>
   </section>
 </template>
 
@@ -55,6 +57,7 @@ import { toHiragana } from "~/utils/ja";
 const BATCH_SIZE = 10;
 
 const endIndex = ref(BATCH_SIZE);
+const currentQuery = ref("");
 const q = ref("");
 const immersionKitData = ref<ImmersionKitExample[]>([]);
 const examples = ref<ImmersionKitExample[]>([]);
@@ -178,6 +181,7 @@ async function doSearch() {
 
     endIndex.value = BATCH_SIZE;
     q.value = route.query.q;
+    currentQuery.value = q.value;
 
     immersionKitData.value = r ? r.data[0].examples : [];
     examples.value = immersionKitData.value;
