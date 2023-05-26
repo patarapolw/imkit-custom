@@ -34,6 +34,7 @@
           <audio
             class="audio"
             :src="ex.sound_url"
+            @play="onPlay"
             preload="none"
             controls
           ></audio>
@@ -62,12 +63,23 @@ const q = ref("");
 const immersionKitData = ref<ImmersionKitExample[]>([]);
 const examples = ref<ImmersionKitExample[]>([]);
 
+function onPlay(ev: Event) {
+  const { target } = ev;
+  if (target) {
+    document.querySelectorAll("audio").forEach((el) => {
+      if (el !== target) {
+        el.pause();
+      }
+    });
+  }
+}
+
 function filterExamples() {
   endIndex.value = BATCH_SIZE;
 
-  const remaining: ImmersionKitExample[] = [];
+  if (q.value) {
+    const remaining: ImmersionKitExample[] = [];
 
-  if (q) {
     q.value
       .toLocaleLowerCase()
       .split(/([\p{sc=Han}\p{sc=Katakana}\p{sc=Hiragana}ー]+)/gu)
@@ -87,7 +99,7 @@ function filterExamples() {
           const exExact: ImmersionKitExample[] = [];
           const exRe: ImmersionKitExample[] = [];
 
-          examples.value.map((ex) => {
+          immersionKitData.value.map((ex) => {
             for (let t of [ex.sentence, ex.sentence_with_furigana]) {
               t = toHiragana(t);
               if (t.includes(s)) {
@@ -101,7 +113,7 @@ function filterExamples() {
           });
           examples.value = [...exExact, ...exRe];
         } else {
-          examples.value = examples.value.filter((ex) => {
+          examples.value = immersionKitData.value.filter((ex) => {
             if (
               [ex.deck_name, ex.category, ...ex.tags, ex.translation].some(
                 (t) => t.toLocaleLowerCase().includes(s),
@@ -113,11 +125,13 @@ function filterExamples() {
           });
         }
       });
+
+    if (q.value === route.query.q) {
+      examples.value = [...examples.value, ...remaining];
+    }
   } else {
-    remaining.push(...examples.value);
-    examples.value = [];
+    examples.value = immersionKitData.value;
   }
-  return remaining;
 }
 
 function onSubmit() {
@@ -220,8 +234,8 @@ async function doSearch() {
       examples.value = examples.value.sort((a, b) => fn(a) - fn(b));
     }
 
-    const remaining = filterExamples();
-    examples.value = [...examples.value, ...remaining];
+    immersionKitData.value = examples.value;
+    filterExamples();
   }
 }
 </script>
