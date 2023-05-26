@@ -175,9 +175,9 @@ async function doSearch() {
       data: {
         examples: ImmersionKitExample[];
       }[];
-    }>(
-      `https://api.immersionkit.com/look_up_dictionary?keyword=${route.query.q}`,
-    ).then((r) => r.data.value);
+    }>(`/api/sentence`, { query: { q: route.query.q } }).then(
+      (r) => r.data.value,
+    );
 
     endIndex.value = BATCH_SIZE;
     q.value = route.query.q;

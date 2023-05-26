@@ -41,12 +41,36 @@ class DbMongo {
           nextReview: Date;
         } | null;
       }>("item"),
+      sentenceLog: this.db.user.collection<{
+        _id: string; // searching q
+        updated: Date;
+        count: number;
+      }>("sentenceLog"),
       sentence: this.db.user.collection<{
-        user: string;
-        itemId: string;
+        user?: string;
+        author_japanese: string; // !empty string
+        /** @type {'anime' | 'drama' | 'games' | 'literature'} */
+        category: "anime" | "drama" | "games" | "literature";
+        channel: string; // !empty string
+        deck_name: string; // *series title
+        deck_name_japanese: string; // !empty string, even for Romaji titles
+        episode: string; // !empty string
+        id: number;
+        image_url: string;
         sentence: string;
-        vocabularies: string[];
+        sentence_id: string;
+        sentence_with_furigana: string; // *Anki style Furigana
+        sound_begin: string; // !empty string
+        sound_end: string; // !empty string
+        sound_url: string;
+        /** @type {'Comedy' | 'Manga' | 'School Life' | 'Fantasy' | 'Romance' | 'Action' | 'Super Power' | 'Drama' | 'SciFi' | 'Ecchi' | 'Daily Life' | 'High School' | 'TYPE-MOON' | 'Dystopian' | 'Female Protagonist' | 'School' | 'Adventure' | 'Supernatural' | 'Parody' | 'Netflix' | 'Slice Of Life' | 'Magic' | 'Slice of Life' | 'Game' | 'Novel' | 'Parallel World' | 'Science Fiction' | 'Dystopia' | 'Cyberpunk' | 'Isekai' | 'Slife of Life' | 'Time Travel' | 'Visual Novel' | 'A-1 Pictures' | 'Light Novel' | 'Hulu'} */
+        tags: string[];
+        timestamp: string; // !empty string
         translation: string;
+        translation_word_index: number[];
+        translation_word_list: string[];
+        word_index: number[];
+        word_list: string[];
       }>("sentence"),
     },
     data: {
@@ -98,9 +122,13 @@ class DbMongo {
       },
     },
   };
+  isConnected = false;
 
   async connect(): Promise<this> {
+    if (this.isConnected) return this;
+
     await this.mongo.connect();
+    this.isConnected = true;
 
     await Promise.allSettled([
       ...((col) => {
@@ -117,11 +145,18 @@ class DbMongo {
         ];
       })(this.col.user.item),
       ...((col) => {
+        return [col.createIndex({ updated: 1 })];
+      })(this.col.user.sentenceLog),
+      ...((col) => {
         return [
-          col.createIndex({ user: 1, itemId: 1 }, { unique: true }),
-          col.createIndex({ sentence: 1 }),
-          col.createIndex({ vocabularies: 1 }),
+          col.createIndex({ user: 1, id: 1 }, { unique: true }),
+          col.createIndex({ updated: 1 }),
+          col.createIndex({ category: 1 }),
+          col.createIndex({ deck_name: 1 }),
+          col.createIndex({ sentence_with_furigana: 1 }),
+          col.createIndex({ tags: 1 }),
           col.createIndex({ translation: "text" }),
+          col.createIndex({ word_list: 1 }),
         ];
       })(this.col.user.sentence),
       ...((col) => {
