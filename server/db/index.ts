@@ -153,6 +153,7 @@ class DbMongo {
           col.createIndex({ updated: 1 }),
           col.createIndex({ category: 1 }),
           col.createIndex({ deck_name: 1 }),
+          col.createIndex({ sentence: 1 }),
           col.createIndex({ sentence_with_furigana: 1 }),
           col.createIndex({ tags: 1 }),
           col.createIndex({ translation: "text" }),

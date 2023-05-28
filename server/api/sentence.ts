@@ -20,15 +20,26 @@ export default defineCachedEventHandler(
     if (rLog) {
       if (!rLog.count) return { data: [{ examples: [] }] };
 
-      // return {
-      //   data: [
-      //     {
-      //       examples: await db.col.user.sentence
-      //         .find({ word_list: q })
-      //         .toArray(),
-      //     },
-      //   ],
-      // };
+      const DB_EXAMPLES_MIN = 5;
+      if (rLog.count >= DB_EXAMPLES_MIN) {
+        const examples = await db.col.user.sentence
+          .find({
+            sentence: new RegExp(
+              q.replace(
+                /([\p{sc=Katakana}\p{sc=Hiragana}]+)/gu,
+                (p) => `[\\p{sc=Katakana}\\p{sc=Hiragana}]{,${p.length}}`,
+              ),
+              "u",
+            ),
+          })
+          .toArray();
+
+        if (examples.length >= DB_EXAMPLES_MIN) {
+          return {
+            data: [{ examples }],
+          };
+        }
+      }
     }
 
     const r = await $fetch<{
